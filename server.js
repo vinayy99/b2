@@ -1,4 +1,4 @@
-// backend/src/server.js
+// backend/server.js
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -15,7 +15,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Allow only frontend origin
+// CORS setup
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'http://localhost:5173',
 ];
@@ -24,28 +24,30 @@ app.use(cors({
   credentials: true,
 }));
 
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Log requests
+// Request logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
-// DB check
+// Database check
 testConnection();
 
-// Root route
+// ✅ Root route
 app.get('/', (req, res) => {
   res.json({
-    status: 'ok',
-    message: 'CollabMate backend running',
-    timestamp: new Date(),
+    message: '✅ CollabMate backend is running successfully!',
+    environment: process.env.NODE_ENV || 'development',
+    backend_url: process.env.BACKEND_URL || null,
+    time: new Date().toISOString(),
   });
 });
 
-// Routes
+// ✅ Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
@@ -53,23 +55,28 @@ app.use('/api/skill-swaps', skillSwapRoutes);
 app.use('/api', applicationRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Health check
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+// ✅ Health check
+app.get('/health', (req, res) => res.json({ status: 'ok', message: 'Server running' }));
 
-// 404 handler
+// 404 Handler
 app.use((req, res) => {
+  console.log(`404 - Route not found: ${req.method} ${req.path}`);
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Error handler
+// Error Handler
 app.use((err, req, res, next) => {
-  console.error('ERROR:', err);
+  console.error('❌ ERROR DETAILS:', err);
   if (!res.headersSent) {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({
+      error: 'Internal server error',
+      message: process.env.NODE_ENV === 'development' ? err.message : undefined,
+      path: req.path,
+    });
   }
 });
 
-// Start server
+// Start server locally (Render automatically runs this)
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`✅ Server running on http://localhost:${PORT}`);
